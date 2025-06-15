@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Tic-Tac-Toe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            width: 300px;
+            height: 300px;
+        }
+        .cell {
+            background-color: #374151; /* gray-700 */
+            border-radius: 0.75rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            color: white;
+            line-height: 1;
+        }
+        .cell:hover {
+            background-color: #4b5563; /* gray-600 */
+        }
+        .cell.x {
+            color: #f472b6; /* pink-400 */
+        }
+        .cell.o {
+            color: #60a5fa; /* blue-400 */
+        }
+        .winning-cell {
+            background-color: #f59e0b !important; /* amber-500 */
+            animation: pulse 0.8s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .hidden {
+            display: none;
+        }
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #4b5563;
+            transition: .4s;
+            border-radius: 28px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #4f46e5; /* indigo-600 */
+        }
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="text-center">
+        <h1 class="text-6xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">Tic-Tac-Toe</h1>
+        <div class="flex flex-col gap-4 w-64 mx-auto">
+            <button id="start-game-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105">
+                Start Game
+            </button>
+            <a href="https://www.gamebin.online/games" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 text-center">
+                Exit
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Game Screen (initially hidden) -->
+    <div id="main-game-screen" class="hidden text-center">
+        <div class="text-center mb-6">
+            <h1 class="text-4xl font-bold mb-2">Tic-Tac-Toe</h1>
+            <p id="status-display" class="text-xl text-gray-300"></p>
+        </div>
+
+        <!-- Settings -->
+        <div id="settings" class="flex justify-center items-center gap-6 mb-6 p-4 bg-gray-800 rounded-xl">
+            <div class="flex items-center gap-3">
+                <span class="font-medium">Sounds</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="sound-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="font-medium">Vibration</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="vibration-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+
+        <div id="board" class="board mb-8 mx-auto"></div>
+
+        <div class="flex justify-center gap-4">
+            <button id="reset-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+                New Game
+            </button>
+            <button id="exit-to-menu-button" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+                Exit to Main Menu
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Mode Selection Modal -->
+    <div id="game-mode-modal" class="modal-backdrop hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-lg text-center w-full max-w-sm">
+            <h2 class="text-2xl font-bold mb-4">Choose Your Opponent</h2>
+            <div class="flex flex-col gap-4">
+                <button id="pvp-button" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-transform transform hover:scale-105">
+                    Player vs Player
+                </button>
+                <button id="pve-button" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-4 rounded-lg transition-transform transform hover:scale-105">
+                    Player vs Bot
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Difficulty Selection Modal -->
+    <div id="difficulty-modal" class="modal-backdrop hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-lg text-center w-full max-w-sm">
+            <h2 class="text-2xl font-bold mb-4">Select Difficulty</h2>
+            <div class="flex flex-col gap-4">
+                <button id="easy-button" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition-transform transform hover:scale-105">
+                    Easy
+                </button>
+                <button id="hard-button" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-4 rounded-lg transition-transform transform hover:scale-105">
+                    Hard
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="modal-backdrop hidden">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-lg text-center w-full max-w-sm">
+            <h2 id="game-over-message" class="text-3xl font-bold mb-6"></h2>
+            <button id="play-again-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const startScreen = document.getElementById('start-screen');
+        const mainGameScreen = document.getElementById('main-game-screen');
+        const startGameButton = document.getElementById('start-game-button');
+        const boardElement = document.getElementById('board');
+        const statusDisplay = document.getElementById('status-display');
+        const resetButton = document.getElementById('reset-button');
+        const exitToMenuButton = document.getElementById('exit-to-menu-button');
+        const gameModeModal = document.getElementById('game-mode-modal');
+        const pvpButton = document.getElementById('pvp-button');
+        const pveButton = document.getElementById('pve-button');
+        const difficultyModal = document.getElementById('difficulty-modal');
+        const easyButton = document.getElementById('easy-button');
+        const hardButton = document.getElementById('hard-button');
+        const gameOverModal = document.getElementById('game-over-modal');
+        const gameOverMessage = document.getElementById('game-over-message');
+        const playAgainButton = document.getElementById('play-again-button');
+        const soundToggle = document.getElementById('sound-toggle');
+        const vibrationToggle = document.getElementById('vibration-toggle');
+
+
+        // --- Game State ---
+        let boardState = Array(9).fill(null);
+        let currentPlayer = 'X';
+        let gameMode = null; // 'pvp' or 'pve'
+        let difficulty = null; // 'easy' or 'hard'
+        let isGameOver = true;
+        let soundEnabled = true;
+        let vibrationEnabled = true;
+
+        // --- Audio Context for Sounds ---
+        let audioCtx;
+
+        /**
+         * Initializes the audio context.
+         */
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        /**
+         * Plays a sound effect.
+         */
+        function playSound(type) {
+            if (!soundEnabled || !audioCtx) return;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+
+            switch(type) {
+                case 'click':
+                    oscillator.type = 'triangle';
+                    oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.2);
+                    break;
+                case 'win':
+                     oscillator.type = 'sine';
+                     oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                     oscillator.frequency.linearRampToValueAtTime(1046.50, audioCtx.currentTime + 0.2);
+                     gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
+                     break;
+                case 'draw':
+                     oscillator.type = 'sawtooth';
+                     oscillator.frequency.setValueAtTime(349.23, audioCtx.currentTime);
+                     gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.4);
+                     break;
+            }
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        }
+
+        /**
+         * Triggers device vibration.
+         */
+        function vibrate(pattern) {
+            if (vibrationEnabled && 'vibrate' in navigator) {
+                navigator.vibrate(pattern);
+            }
+        }
+        
+        /**
+         * Initializes the game.
+         */
+        function init() {
+            createBoard();
+
+            function unlockAudio() {
+                initAudio();
+                document.body.removeEventListener('click', unlockAudio);
+                document.body.removeEventListener('touchstart', unlockAudio);
+            }
+            document.body.addEventListener('click', unlockAudio);
+            document.body.addEventListener('touchstart', unlockAudio);
+
+            startGameButton.addEventListener('click', () => {
+                startScreen.classList.add('hidden');
+                gameModeModal.classList.remove('hidden');
+                playSound('click');
+            });
+            
+            pvpButton.addEventListener('click', () => startGame('pvp'));
+            
+            pveButton.addEventListener('click', () => {
+                gameModeModal.classList.add('hidden');
+                difficultyModal.classList.remove('hidden');
+                playSound('click');
+            });
+
+            easyButton.addEventListener('click', () => startGame('pve', 'easy'));
+            hardButton.addEventListener('click', () => startGame('pve', 'hard'));
+
+            resetButton.addEventListener('click', () => {
+                gameOverModal.classList.add('hidden');
+                startGame(gameMode, difficulty);
+                playSound('click');
+            });
+            exitToMenuButton.addEventListener('click', () => {
+                mainGameScreen.classList.add('hidden');
+                gameOverModal.classList.add('hidden');
+                startScreen.classList.remove('hidden');
+                playSound('click');
+            });
+            playAgainButton.addEventListener('click', () => {
+                gameOverModal.classList.add('hidden');
+                startGame(gameMode, difficulty);
+                playSound('click');
+            });
+
+            soundToggle.addEventListener('change', (e) => soundEnabled = e.target.checked);
+            vibrationToggle.addEventListener('change', (e) => vibrationEnabled = e.target.checked);
+        }
+        
+        /**
+         * Starts a new game with the selected mode and difficulty.
+         */
+        function startGame(mode, diff = null) {
+            gameMode = mode;
+            difficulty = diff;
+            isGameOver = false;
+            currentPlayer = 'X';
+            boardState.fill(null);
+            renderBoard();
+            updateStatus();
+            gameModeModal.classList.add('hidden');
+            difficultyModal.classList.add('hidden');
+            mainGameScreen.classList.remove('hidden');
+            playSound('click');
+        }
+
+        /**
+         * Creates the 9 cells for the game board.
+         */
+        function createBoard() {
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.index = i;
+                cell.addEventListener('click', handleCellClick);
+                boardElement.appendChild(cell);
+            }
+        }
+        
+        /**
+         * Renders the current state of the board.
+         */
+        function renderBoard() {
+            boardState.forEach((value, index) => {
+                const cell = boardElement.children[index];
+                cell.textContent = value;
+                cell.classList.remove('x', 'o', 'winning-cell');
+                if (value) {
+                    cell.classList.add(value.toLowerCase());
+                }
+            });
+        }
+
+        /**
+         * Handles the logic when a cell is clicked.
+         */
+        function handleCellClick(event) {
+            if (isGameOver) return;
+            const index = event.target.dataset.index;
+            if (boardState[index] !== null) return;
+            if (gameMode === 'pve' && currentPlayer === 'O') return;
+            makeMove(parseInt(index), currentPlayer);
+        }
+        
+        /**
+         * Places a mark on the board.
+         */
+        function makeMove(index, player) {
+            if (boardState[index] !== null || isGameOver) return;
+            
+            boardState[index] = player;
+            renderBoard();
+            playSound('click');
+            vibrate(50);
+
+            const winningInfo = checkWinner();
+            if (winningInfo) {
+                endGame(winningInfo);
+                return;
+            }
+
+            if (boardState.every(cell => cell !== null)) {
+                endGame({ winner: 'Draw' });
+                return;
+            }
+            
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateStatus();
+            
+            if (gameMode === 'pve' && currentPlayer === 'O' && !isGameOver) {
+                setTimeout(botMove, 500);
+            }
+        }
+        
+        /**
+         * Updates the status display.
+         */
+        function updateStatus() {
+            if (!isGameOver) {
+                statusDisplay.textContent = `Player ${currentPlayer}'s Turn`;
+            }
+        }
+        
+        /**
+         * Checks if there is a winner.
+         */
+        function checkWinner() {
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            for (const line of winningCombinations) {
+                const [a, b, c] = line;
+                if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+                    return { winner: boardState[a], line };
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Handles the end of the game.
+         */
+        function endGame(result) {
+            isGameOver = true;
+            if (result.winner === 'Draw') {
+                statusDisplay.textContent = "It's a Draw!";
+                gameOverMessage.textContent = "It's a Draw!";
+                playSound('draw');
+                vibrate([100, 50, 100]);
+            } else {
+                statusDisplay.textContent = `Player ${result.winner} Wins!`;
+                gameOverMessage.textContent = `Player ${result.winner} Wins!`;
+                result.line.forEach(index => {
+                    boardElement.children[index].classList.add('winning-cell');
+                });
+                playSound('win');
+                vibrate(200);
+            }
+            setTimeout(() => gameOverModal.classList.remove('hidden'), 1000);
+        }
+        
+        /**
+         * Contains the logic for the bot's move based on difficulty.
+         */
+        function botMove() {
+            let move;
+            const availableCells = boardState.map((val, i) => val === null ? i : null).filter(val => val !== null);
+            
+            if (difficulty === 'easy') {
+                move = availableCells[Math.floor(Math.random() * availableCells.length)];
+            } else { // Hard difficulty
+                move = findStrategicMove('O'); // Find a winning move for bot
+                if (move === null) {
+                    move = findStrategicMove('X'); // Find a blocking move
+                }
+                if (move === null) {
+                    // Pick a random available spot if no strategic move is found
+                    move = availableCells[Math.floor(Math.random() * availableCells.length)];
+                }
+            }
+            makeMove(move, 'O');
+        }
+
+        /**
+         * Finds a winning or blocking move.
+         */
+        function findStrategicMove(player) {
+            for (let i = 0; i < 9; i++) {
+                if (boardState[i] === null) {
+                    const tempBoard = [...boardState];
+                    tempBoard[i] = player;
+                    if (checkWinnerForBoard(tempBoard)?.winner === player) {
+                        return i;
+                    }
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Helper function for the AI to check a hypothetical board state.
+         */
+        function checkWinnerForBoard(board) {
+             const winningCombinations = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+             for (const line of winningCombinations) {
+                const [a, b, c] = line;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return { winner: board[a], line };
+                }
+            }
+            return null;
+        }
+
+        // --- Start the game ---
+        init();
+    </script>
+
+</body>
+</html>
